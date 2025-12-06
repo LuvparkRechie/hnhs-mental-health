@@ -4,6 +4,7 @@ import 'package:hnhsmind_care/service/appointment_service.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../../app_theme.dart';
 import '../../provider/auth_provider.dart';
 
@@ -19,7 +20,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   bool isLoading = true;
 
   // Available days and time slots
-  final List<String> availableDays = ['Tuesday', 'Thursday', 'Friday'];
+  final List<String> availableDays = [
+    'Tuesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
   final List<TimeSlot> availableTimeSlots = [
     TimeSlot(start: 8, end: 9, label: '8:00 AM - 9:00 AM'),
     TimeSlot(start: 9, end: 10, label: '9:00 AM - 10:00 AM'),

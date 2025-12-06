@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hnhsmind_care/app_theme.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:hnhsmind_care/app_theme.dart';
 
 import '../../service/appointment_service.dart';
 
@@ -577,7 +577,12 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     final TextEditingController reasonController = TextEditingController();
     bool isRescheduling = false;
 
-    final List<String> availableDays = ['Tuesday', 'Thursday', 'Friday'];
+    final List<String> availableDays = [
+      'Tuesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     final List<TimeSlot> availableTimeSlots = [
       TimeSlot(start: 8, end: 9, label: '8:00 AM - 9:00 AM'),
       TimeSlot(start: 9, end: 10, label: '9:00 AM - 10:00 AM'),

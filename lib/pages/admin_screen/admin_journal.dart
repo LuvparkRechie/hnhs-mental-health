@@ -1,8 +1,9 @@
+import 'package:auto_size_text_plus/auto_size_text_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hnhsmind_care/pages/mood_question.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:hnhsmind_care/service/journal_service.dart';
+import 'package:iconsax/iconsax.dart';
+
 import '../../app_theme.dart';
 import 'create_qoute_screen.dart';
 
@@ -200,12 +201,14 @@ class _AdminJournalScreenState extends State<AdminJournalScreen> {
                     size: 24,
                   ),
                   SizedBox(width: 12),
-                  Text(
-                    'Manage Motivational Quotes',
-                    style: GoogleFonts.poppins(
-                      color: AppTheme.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: AutoSizeText(
+                      'Manage Motivational Quotes',
+                      style: GoogleFonts.poppins(
+                        color: AppTheme.textPrimary,
+
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],

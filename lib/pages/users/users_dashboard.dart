@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hnhsmind_care/pages/chat_screen.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../../app_theme.dart';
 import '../../custom/page_route.dart';
 import '../../provider/auth_provider.dart';
@@ -352,8 +353,8 @@ class _UserDashboardState extends State<UserDashboard> {
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2, // Changed to 2 columns for 4 items (2x2 grid)
               crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.0, // Slightly taller for better visibility
+              mainAxisSpacing: 15,
+              childAspectRatio: .9, // Slightly taller for better visibility
             ),
             itemCount: _menuItems.length,
             itemBuilder: (context, index) {
@@ -367,7 +368,7 @@ class _UserDashboardState extends State<UserDashboard> {
 
   Widget _buildFeatureCard(DashboardItem item) {
     return Container(
-      height: 200,
+      height: 230,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(

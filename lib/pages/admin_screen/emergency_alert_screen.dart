@@ -1,11 +1,10 @@
-import 'dart:io';
-
+import 'package:auto_size_text_plus/auto_size_text_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hnhsmind_care/api_key/api_key.dart';
+import 'package:hnhsmind_care/app_theme.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:hnhsmind_care/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyAlertsScreen extends StatefulWidget {
@@ -480,7 +479,11 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
                   child: ElevatedButton.icon(
                     onPressed: () => launchSMS(mobileNo, ""),
                     icon: Icon(Iconsax.message, size: 16),
-                    label: Text('Message'),
+                    label: AutoSizeText(
+                      'Send SMS',
+                      maxLines: 1,
+                      style: TextStyle(),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryRed,
                       foregroundColor: Colors.white,

@@ -28,16 +28,7 @@ class AppointmentCleanerService {
               "created_at < DATE_SUB(CONVERT_TZ(NOW(), @@global.time_zone, '+08:00'), INTERVAL 30 MINUTE) AND status NOT IN ('confirmed', 'rescheduled') LIMIT 500",
         },
       );
-
-      final response = await api.delete();
-      print("response: $response");
-      if (response['success'] == true) {
-        print(
-          "[AppointmentCleaner] Deleted expired appointments: ${response['deleted_count'] ?? 0}",
-        );
-      } else {
-        print("[AppointmentCleaner] Failed: ${response['message']}");
-      }
+      await api.delete();
     } catch (e) {
       print("[AppointmentCleaner] Error: $e");
     }
