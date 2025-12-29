@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 import 'package:hnhsmind_care/api_key/api_key.dart';
 import 'package:hnhsmind_care/app_theme.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
 
 class AdminMoodTrackerScreen extends StatefulWidget {
   const AdminMoodTrackerScreen({super.key});
@@ -113,37 +113,41 @@ class _AdminMoodTrackerScreenState extends State<AdminMoodTrackerScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
 
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppTheme.primaryRed))
-          : _errorMessage.isNotEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Iconsax.warning_2, color: Colors.orange, size: 50),
-                  SizedBox(height: 16),
-                  Text(
-                    _errorMessage,
-                    style: GoogleFonts.inter(
-                      color: AppTheme.textSecondary,
-                      fontSize: 14,
+      body: SafeArea(
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(color: AppTheme.primaryRed),
+              )
+            : _errorMessage.isNotEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Iconsax.warning_2, color: Colors.orange, size: 50),
+                    SizedBox(height: 16),
+                    Text(
+                      _errorMessage,
+                      style: GoogleFonts.inter(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: getUsersMood,
-                    child: Text('Retry'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryRed,
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: getUsersMood,
+                      child: Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryRed,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            )
-          : _selectedUser == null
-          ? _buildUserList()
-          : _buildUserMoodList(_selectedUser!),
+                  ],
+                ),
+              )
+            : _selectedUser == null
+            ? _buildUserList()
+            : _buildUserMoodList(_selectedUser!),
+      ),
     );
   }
 

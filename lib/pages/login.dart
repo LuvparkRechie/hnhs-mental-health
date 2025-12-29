@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hnhsmind_care/custom/page_route.dart';
 import 'package:hnhsmind_care/main.dart';
+import 'package:hnhsmind_care/pages/user_agreement.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../provider/auth_provider.dart';
+import 'admin_screen/admin_dashboard_screen.dart';
+import 'users/users_dashboard.dart';
 
 enum LoginResult { success, failure, error }
 
@@ -31,57 +35,85 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _login() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final loginResult = await authProvider.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+    final authData = await authProvider.getAuthData();
+    if (authData == null) {
+      // Store the current context before showing the dialog
+      final currentContext = context;
 
-      if (loginResult == LoginResult.success) {
-        final userData = await authProvider.getAuthData();
-        Future.microtask(() {
-          myAppKey.currentState?.initBackgroundAlarm();
-        });
-        if (userData["role_id"].toString() == "2") {
-          // ignore: use_build_context_synchronously
-          Navigator.pushReplacementNamed(context, '/users');
-        } else {
-          Navigator.pushReplacementNamed(context, '/admin');
-        }
-      } else {
-        final errorMessage = authProvider.error ?? 'Login failed';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppTheme.dangerColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('An error occurred: ${e.toString()}'),
-          backgroundColor: AppTheme.dangerColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      showDialog(
+        // ignore: use_build_context_synchronously
+        context: context,
+        barrierDismissible: false, // Prevent dismissing by tapping outside
+        builder: (BuildContext dialogContext) {
+          return UserAgreementScreen(
+            onAccept: () async {
+              try {
+                final loginResult = await authProvider.login(
+                  _emailController.text.trim(),
+                  _passwordController.text.trim(),
+                );
+
+                if (loginResult == LoginResult.success) {
+                  final userData = await authProvider.getAuthData();
+                  Future.microtask(() {
+                    myAppKey.currentState?.initBackgroundAlarm();
+                  });
+
+                  // Navigate away first, then pop the dialog
+                  if (userData["role_id"].toString() == "2") {
+                    SmoothRoute(
+                      context: context,
+                      child: UserDashboard(),
+                    ).route();
+                  } else {
+                    SmoothRoute(
+                      context: context,
+                      child: AdminDashboard(),
+                    ).route();
+                  }
+                } else {
+                  final errorMessage = authProvider.error ?? 'Login failed';
+
+                  // Use the original context (currentContext) instead of dialogContext
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(
+                      content: Text(errorMessage),
+                      backgroundColor: AppTheme.dangerColor,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(currentContext).showSnackBar(
+                  SnackBar(
+                    content: Text('An error occurred: ${e.toString()}'),
+                    backgroundColor: AppTheme.dangerColor,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              } finally {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                }
+              }
+            },
+          );
+        },
       );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 

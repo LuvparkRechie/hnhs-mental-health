@@ -17,8 +17,10 @@ class _BookedAppointmentState extends State<BookedAppointment> {
   List<dynamic> allAppointments = [];
   List<dynamic> filteredAppointments = [];
   bool isLoading = true;
-  String selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  String _selectedTab = 'PENDING'; // Default to PENDING tab
+
+  // Add these for date filter
+  DateTime? _selectedFilterDate;
+  final TextEditingController _dateFilterController = TextEditingController();
 
   @override
   void initState() {
@@ -33,7 +35,7 @@ class _BookedAppointmentState extends State<BookedAppointment> {
 
     try {
       final response = await AppointmentService.getAllAppointmentsWithUsers();
-
+      print("response all appointment $response");
       if (mounted) {
         if (response['success'] == true) {
           final allAppts = List.from(response['data'] ?? []);
@@ -66,26 +68,82 @@ class _BookedAppointmentState extends State<BookedAppointment> {
   }
 
   void _filterAppointments() {
-    setState(() {
-      filteredAppointments =
-          allAppointments.where((appointment) {
-            final matchesDate = appointment['appointment_date'] == selectedDate;
-            final matchesStatus = appointment['status'] == _selectedTab;
+    List<dynamic> filtered = allAppointments;
 
-            return matchesDate && matchesStatus;
-          }).toList()..sort((a, b) {
-            final timeA = a['appointment_time'] ?? '';
-            final timeB = b['appointment_time'] ?? '';
-            return timeA.compareTo(timeB);
-          });
+    // Filter by date if selected
+    if (_selectedFilterDate != null) {
+      filtered = filtered.where((appt) {
+        final appointmentDate = DateTime.parse(appt['appointment_date']);
+        return appointmentDate.year == _selectedFilterDate!.year &&
+            appointmentDate.month == _selectedFilterDate!.month &&
+            appointmentDate.day == _selectedFilterDate!.day;
+      }).toList();
+    }
+
+    // Sort appointments: PENDING first, then by time
+    filtered.sort((a, b) {
+      final statusA = a['status'] ?? '';
+      final statusB = b['status'] ?? '';
+      final timeA = a['appointment_time'] ?? '';
+      final timeB = b['appointment_time'] ?? '';
+
+      // PENDING appointments come first
+      if (statusA == 'PENDING' && statusB != 'PENDING') return -1;
+      if (statusA != 'PENDING' && statusB == 'PENDING') return 1;
+
+      // Then sort by time
+      return timeA.compareTo(timeB);
     });
+
+    setState(() {
+      filteredAppointments = filtered;
+    });
+  }
+
+  Future<void> _selectFilterDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedFilterDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: AppTheme.primaryRed,
+            colorScheme: ColorScheme.light(
+              primary: AppTheme.primaryRed,
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedFilterDate) {
+      setState(() {
+        _selectedFilterDate = picked;
+        _dateFilterController.text = DateFormat('MMM dd, yyyy').format(picked);
+      });
+      _filterAppointments();
+    }
+  }
+
+  void _clearDateFilter() {
+    setState(() {
+      _selectedFilterDate = null;
+      _dateFilterController.clear();
+    });
+    _filterAppointments();
   }
 
   void _showSnackbar(String message, bool isError) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? AppTheme.dangerColor : AppTheme.accentColor,
+        backgroundColor: AppTheme.dangerColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -93,100 +151,220 @@ class _BookedAppointmentState extends State<BookedAppointment> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: null,
-      body: Column(
-        children: [
-          // Simple Tab Buttons
-          _buildTabButtons(),
-
-          // Appointments List
-          Expanded(
-            child: isLoading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: AppTheme.primaryRed,
-                    ),
-                  )
-                : filteredAppointments.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: filteredAppointments.length,
-                    itemBuilder: (context, index) {
-                      return _buildAppointmentCard(filteredAppointments[index]);
-                    },
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Section
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 5),
                   ),
-          ),
-        ],
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.lightRed),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 18,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Appointments",
+                              style: GoogleFonts.poppins(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Manage all appointments",
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!isLoading)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightRed,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "${filteredAppointments.length}",
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.darkRed,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Date Filter Section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.lightRed),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Filter by Date",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _selectFilterDate(context),
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppTheme.lightRed,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Iconsax.calendar_1,
+                                        size: 20,
+                                        color: AppTheme.primaryRed,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedFilterDate == null
+                                              ? "Select date"
+                                              : DateFormat(
+                                                  'EEEE, MMM dd, yyyy',
+                                                ).format(_selectedFilterDate!),
+                                          style: GoogleFonts.inter(
+                                            color: _selectedFilterDate == null
+                                                ? AppTheme.textSecondary
+                                                : AppTheme.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_selectedFilterDate != null) ...[
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: _clearDateFilter,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryRed,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Appointments List
+            Expanded(
+              child: isLoading
+                  ? _buildLoadingState()
+                  : filteredAppointments.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: filteredAppointments.length,
+                      itemBuilder: (context, index) {
+                        return _buildAppointmentCard(
+                          filteredAppointments[index],
+                          index,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTabButtons() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(child: _buildTabButton('PENDING', 'Pending')),
-          SizedBox(width: 12),
-          Expanded(child: _buildTabButton('CONFIRMED', 'Confirmed')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String tab, String label) {
-    final isSelected = _selectedTab == tab;
-    return ElevatedButton(
-      onPressed: () {
-        setState(() {
-          _selectedTab = tab;
-          _filterAppointments();
-        });
-      },
-      style: ElevatedButton.styleFrom(
-        foregroundColor: isSelected ? Colors.white : AppTheme.textPrimary,
-        backgroundColor: isSelected
-            ? AppTheme.primaryRed
-            : AppTheme.surfaceColor,
-        padding: EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        elevation: isSelected ? 2 : 0,
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
+  Widget _buildLoadingState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _selectedTab == 'PENDING'
-                ? Icons.pending_actions
-                : Icons.event_available,
-            size: 64,
-            color: AppTheme.textSecondary,
-          ),
-          SizedBox(height: 16),
+          CircularProgressIndicator(color: AppTheme.primaryRed, strokeWidth: 2),
+          const SizedBox(height: 20),
           Text(
-            _selectedTab == 'PENDING'
-                ? 'No pending appointments'
-                : 'No confirmed appointments',
-            style: GoogleFonts.poppins(
-              color: AppTheme.textPrimary,
-              fontSize: 18,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            _selectedTab == 'PENDING'
-                ? 'Pending appointments will appear here'
-                : 'Confirmed appointments will appear here',
+            'Loading appointments...',
             style: GoogleFonts.inter(color: AppTheme.textSecondary),
           ),
         ],
@@ -194,7 +372,80 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.lightRed,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _selectedFilterDate == null
+                    ? Icons.event_note
+                    : Icons.search_off,
+                size: 48,
+                color: AppTheme.darkRed,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _selectedFilterDate == null
+                  ? 'No appointments yet'
+                  : 'No appointments on selected date',
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _selectedFilterDate == null
+                  ? 'Appointments will appear here once booked'
+                  : 'Try selecting a different date',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (_selectedFilterDate != null) ...[
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _clearDateFilter,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                ),
+                child: Text(
+                  'Clear date filter',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppointmentCard(Map<String, dynamic> appointment, int index) {
     final status = appointment['status'] ?? 'PENDING';
     final expiresAt = appointment['expires_at'];
     final isExpired =
@@ -203,144 +454,215 @@ class _BookedAppointmentState extends State<BookedAppointment> {
         status == 'PENDING';
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [AppTheme.cardShadow],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status Ribbon
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _getStatusColor(status).withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatusBadge(status, isExpired),
-                Text(
-                  _formatTime(appointment['appointment_time']),
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryRed,
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 12),
-
-            // Student Info
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppTheme.lightRed,
-                  child: Icon(
-                    Icons.person,
-                    color: AppTheme.primaryRed,
-                    size: 20,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment['username'] ?? 'Unknown User',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        appointment['email'] ?? 'No email',
-                        style: GoogleFonts.inter(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Notes
-            if (appointment['notes'] != null &&
-                appointment['notes'].isNotEmpty) ...[
-              SizedBox(height: 12),
-              Text(
-                appointment['notes'],
-                style: GoogleFonts.inter(
-                  color: AppTheme.textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-
-            // Expiry Warning
-            if (isExpired) ...[
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightRed,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
+                Row(
                   children: [
-                    Icon(Icons.warning, size: 16, color: AppTheme.dangerColor),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Booking expired',
-                        style: GoogleFonts.inter(
-                          color: AppTheme.dangerColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(status),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      isExpired ? 'EXPIRED' : status,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _getStatusColor(status),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                Text(
+                  _formatTime(appointment['appointment_time']),
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryRed,
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-            // Actions
-            SizedBox(height: 16),
-            _buildActionButtons(appointment, status, isExpired),
-          ],
-        ),
-      ),
-    );
-  }
+          // Appointment Details
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 18,
+                      color: AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _formatDisplayDate(
+                        DateTime.parse(appointment['appointment_date']),
+                      ),
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
 
-  Widget _buildStatusBadge(String status, bool isExpired) {
-    Color statusColor = _getStatusColor(status);
-    String displayStatus = isExpired ? 'EXPIRED' : status;
+                const SizedBox(height: 16),
 
-    if (isExpired) {
-      statusColor = AppTheme.dangerColor;
-    }
+                // Student Info
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightRed,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: AppTheme.darkRed,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appointment['username'] ?? 'Unknown User',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            appointment['email'] ?? 'No email',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor),
-      ),
-      child: Text(
-        displayStatus,
-        style: GoogleFonts.inter(
-          color: statusColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
+                // Notes
+                if (appointment['notes'] != "null" &&
+                    appointment['notes'].isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Notes',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          appointment['notes'],
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Expiry Warning
+                if (isExpired) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.dangerColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'This booking has expired',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Actions
+                const SizedBox(height: 20),
+                _buildActionButtons(appointment, status, isExpired),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -353,13 +675,22 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     if (isExpired) {
       return SizedBox(
         width: double.infinity,
-        child: OutlinedButton(
+        child: ElevatedButton(
           onPressed: () => _removeExpiredAppointment(appointment),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.dangerColor,
-            side: BorderSide(color: AppTheme.dangerColor),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.dangerColor,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          child: Text('Remove Expired'),
+          child: Text(
+            'Remove Expired',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
         ),
       );
     }
@@ -373,19 +704,36 @@ class _BookedAppointmentState extends State<BookedAppointment> {
                 onPressed: () => _acceptAppointment(appointment),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accentColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Accept'),
+                child: Text(
+                  'Accept',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
                 onPressed: () => _declineAppointment(appointment),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.dangerColor,
-                  side: BorderSide(color: AppTheme.dangerColor),
+                  side: const BorderSide(color: AppTheme.dangerColor),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Decline'),
+                child: Text(
+                  'Decline',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -399,19 +747,36 @@ class _BookedAppointmentState extends State<BookedAppointment> {
                 onPressed: () => _markAsDone(appointment),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryRed,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Mark Done'),
+                child: Text(
+                  'Mark as Done',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
                 onPressed: () => _showRescheduleDialog(appointment),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.warningColor,
-                  side: BorderSide(color: AppTheme.warningColor),
+                  side: const BorderSide(color: AppTheme.warningColor),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Reschedule'),
+                child: Text(
+                  'Reschedule',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -425,19 +790,36 @@ class _BookedAppointmentState extends State<BookedAppointment> {
                 onPressed: () => _markAsDone(appointment),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryRed,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Mark Done'),
+                child: Text(
+                  'Mark Done',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
                 onPressed: () => _showRescheduleDialog(appointment),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.warningColor,
-                  side: BorderSide(color: AppTheme.warningColor),
+                  side: const BorderSide(color: AppTheme.warningColor),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text('Reschedule'),
+                child: Text(
+                  'Reschedule',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -450,31 +832,40 @@ class _BookedAppointmentState extends State<BookedAppointment> {
             onPressed: () => _showRescheduleDialog(appointment),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.warningColor,
-              side: BorderSide(color: AppTheme.warningColor),
+              side: const BorderSide(color: AppTheme.warningColor),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text('Reschedule'),
+            child: Text(
+              'Reschedule',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
           ),
         );
     }
   }
 
-  // Helper Methods
+  // Helper Methods using your AppTheme colors
   Color _getStatusColor(String status) {
     switch (status) {
       case 'PENDING':
-        return AppTheme.warningColor;
+        return AppTheme.warningColor; // Amber
       case 'CONFIRMED':
-        return AppTheme.accentColor;
+        return AppTheme.accentColor; // Green
       case 'RESCHEDULED':
-        return AppTheme.primaryRed;
+        return AppTheme.primaryRed; // Red
       case 'COMPLETED':
-        return AppTheme.textSecondary;
+        return Colors.green; // Darker green
       case 'CANCELLED':
-        return AppTheme.dangerColor;
+        return AppTheme.dangerColor; // Red
+      case 'DECLINED':
+        return Colors.grey; // Grey
       case 'EXPIRED':
-        return AppTheme.dangerColor;
+        return AppTheme.dangerColor; // Red
       default:
-        return AppTheme.textSecondary;
+        return AppTheme.textSecondary; // Grey
     }
   }
 
@@ -488,101 +879,18 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     }
   }
 
-  // Action Methods
-  Future<void> _acceptAppointment(Map<String, dynamic> appointment) async {
-    final appointmentId = appointment['id'].toString();
-    final response = await AppointmentService.confirmAppointment(appointmentId);
-
-    if (response['success'] == true) {
-      _showSnackbar('Appointment accepted', false);
-      _loadAppointments();
-    } else {
-      _showSnackbar(response['message'] ?? 'Failed to accept', true);
-    }
+  String _formatDisplayDate(DateTime date) {
+    return DateFormat('EEEE, MMM dd, yyyy').format(date);
   }
 
-  Future<void> _declineAppointment(Map<String, dynamic> appointment) async {
-    final appointmentId = appointment['id'].toString();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Decline Appointment'),
-        content: Text('Are you sure you want to decline this appointment?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.dangerColor,
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              final response = await AppointmentService.updateAppointmentStatus(
-                appointmentId,
-                'DECLINED',
-              );
-
-              if (response['success'] == true) {
-                _showSnackbar('Appointment declined', false);
-                _loadAppointments();
-              } else {
-                _showSnackbar(response['message'] ?? 'Failed to decline', true);
-              }
-            },
-            child: Text('Decline'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _markAsDone(Map<String, dynamic> appointment) async {
-    final appointmentId = appointment['id'].toString();
-    final response = await AppointmentService.updateAppointmentStatus(
-      appointmentId,
-      'COMPLETED',
-    );
-
-    if (response['success'] == true) {
-      _showSnackbar('Appointment completed', false);
-      _loadAppointments();
-    } else {
-      _showSnackbar(response['message'] ?? 'Failed to complete', true);
-    }
-  }
-
-  Future<void> _removeExpiredAppointment(
-    Map<String, dynamic> appointment,
-  ) async {
-    final appointmentId = appointment['id'].toString();
-    final response = await AppointmentService.updateAppointmentStatus(
-      appointmentId,
-      'CANCELLED',
-    );
-
-    if (response['success'] == true) {
-      _showSnackbar('Expired appointment removed', false);
-      _loadAppointments();
-    } else {
-      _showSnackbar('Failed to remove', true);
-    }
-  }
-
+  // RESCHEDULE DIALOG METHODS (RESTORED)
   void _showRescheduleDialog(Map<String, dynamic> appointment) {
     DateTime selectedDate = DateTime.now().add(Duration(days: 1));
     TimeSlot? selectedTimeSlot;
     final TextEditingController reasonController = TextEditingController();
     bool isRescheduling = false;
 
-    final List<String> availableDays = [
-      'Tuesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
+    final List<String> availableDays = ['Tuesday', 'Thursday', 'Friday'];
     final List<TimeSlot> availableTimeSlots = [
       TimeSlot(start: 8, end: 9, label: '8:00 AM - 9:00 AM'),
       TimeSlot(start: 9, end: 10, label: '9:00 AM - 10:00 AM'),
@@ -836,6 +1144,7 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     );
   }
 
+  // RESCHEDULE HELPER METHODS (RESTORED)
   Widget _buildTimeSlotsGrid({
     required List<TimeSlot> availableTimeSlots,
     required DateTime selectedDate,
@@ -970,8 +1279,87 @@ class _BookedAppointmentState extends State<BookedAppointment> {
     });
   }
 
-  String _formatDisplayDate(DateTime date) {
-    return DateFormat('EEEE, MMM dd, yyyy').format(date);
+  // Action Methods
+  Future<void> _acceptAppointment(Map<String, dynamic> appointment) async {
+    final appointmentId = appointment['id'].toString();
+    final response = await AppointmentService.confirmAppointment(appointmentId);
+
+    if (response['success'] == true) {
+      _showSnackbar('Appointment accepted', false);
+      _loadAppointments();
+    } else {
+      _showSnackbar(response['message'] ?? 'Failed to accept', true);
+    }
+  }
+
+  Future<void> _declineAppointment(Map<String, dynamic> appointment) async {
+    final appointmentId = appointment['id'].toString();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Decline Appointment'),
+        content: Text('Are you sure you want to decline this appointment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.dangerColor,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              final response = await AppointmentService.updateAppointmentStatus(
+                appointmentId,
+                'DECLINED',
+              );
+
+              if (response['success'] == true) {
+                _showSnackbar('Appointment declined', false);
+                _loadAppointments();
+              } else {
+                _showSnackbar(response['message'] ?? 'Failed to decline', true);
+              }
+            },
+            child: Text('Decline'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markAsDone(Map<String, dynamic> appointment) async {
+    final appointmentId = appointment['id'].toString();
+    final response = await AppointmentService.updateAppointmentStatus(
+      appointmentId,
+      'COMPLETED',
+    );
+
+    if (response['success'] == true) {
+      _showSnackbar('Appointment completed', false);
+      _loadAppointments();
+    } else {
+      _showSnackbar(response['message'] ?? 'Failed to complete', true);
+    }
+  }
+
+  Future<void> _removeExpiredAppointment(
+    Map<String, dynamic> appointment,
+  ) async {
+    final appointmentId = appointment['id'].toString();
+    final response = await AppointmentService.updateAppointmentStatus(
+      appointmentId,
+      'CANCELLED',
+    );
+
+    if (response['success'] == true) {
+      _showSnackbar('Expired appointment removed', false);
+      _loadAppointments();
+    } else {
+      _showSnackbar('Failed to remove', true);
+    }
   }
 }
 

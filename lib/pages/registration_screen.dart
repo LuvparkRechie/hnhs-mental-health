@@ -427,8 +427,10 @@
 // }
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../app_theme.dart';
 import '../provider/auth_provider.dart';
 
@@ -666,6 +668,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return 'Please use YYYY-MM-DD format';
                   }
                   return null;
+                },
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+
+                  if (pickedDate != null) {
+                    String formattedDate = DateFormat(
+                      'yyyy-MM-dd',
+                    ).format(pickedDate);
+
+                    setState(() {
+                      _dobController.text = formattedDate.toString();
+                    });
+                  }
                 },
               ),
               const SizedBox(height: 20),

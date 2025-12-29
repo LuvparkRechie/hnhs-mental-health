@@ -4,6 +4,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:hnhsmind_care/pages/registration_screen.dart';
+import 'package:hnhsmind_care/service/notification_sqllite.dart';
 import 'package:permission_handler/permission_handler.dart'
     hide PermissionStatus;
 import 'package:provider/provider.dart';
@@ -21,10 +22,8 @@ import 'pages/users/daily_journal.dart';
 import 'pages/users/users_dashboard.dart';
 import 'pages/users/users_mood_tracker.dart';
 import 'provider/auth_provider.dart';
-import 'provider/chat_provider.dart';
 import 'provider/notification_controller.dart';
 import 'service/cleaner_service.dart';
-import 'suicide_detection_service.dart';
 
 // =====================================================
 // GLOBAL KEY
@@ -46,24 +45,62 @@ Future<void> backgroundFunc(int alarmId, Map<String, dynamic> params) async {
     return;
   }
 
-  // Fetch last admin alert
-  final alert = await getAdminNotif(userId);
-  if (alert.isEmpty) {
+  // Fetch admin alerts from server
+  final alertList = await getAdminNotif(userId);
+
+  if (alertList.isEmpty) {
+    await AdminAlertDB.instance.deleteAll();
     return;
   }
-  for (int i = 0; i < alert.length; i++) {
+
+  // Extract current valid server alert IDs
+  List<int> validIds = alertList
+      .map<int>((e) => int.parse(e["id"].toString()))
+      .toList();
+
+  // STEP 1: Load local stored IDs
+  final db = await AdminAlertDB.instance.database;
+  final localRows = await db.query("admin_alerts");
+  List<int> localIds = localRows.map((e) => e["id"] as int).toList();
+
+  // STEP 2: Delete alerts in SQLite that no longer exist on server
+  final toRemove = localIds.where((id) => !validIds.contains(id)).toList();
+
+  for (var removeId in toRemove) {
+    await db.delete("admin_alerts", where: "id = ?", whereArgs: [removeId]);
+  }
+
+  // STEP 3: Loop through server alerts and notify new ones
+  for (final alert in alertList) {
+    final alertId = int.parse(alert["id"].toString());
+
+    // Check if exists in SQLite
+    final exists = await AdminAlertDB.instance.getAlert(alertId);
+
+    if (exists != null) {
+      continue;
+    }
+
+    // Send notification ONCE
     final notifId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    print("aiii ${alert[i]}");
+
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: notifId,
         channelKey: 'alerts',
-        title: alert[i]["user_message"] ?? "New Admin Alert",
-        body: alert[i]["description"] ?? "You have a new admin alert.",
+        title: alert["user_message"],
+        body: alert["description"],
         wakeUpScreen: true,
         autoDismissible: true,
       ),
     );
+
+    // Save alert into SQLite to prevent duplicates
+    await AdminAlertDB.instance.insertAlert({
+      "id": alertId,
+      "user_message": alert["user_message"],
+      "description": alert["description"],
+    });
   }
 }
 
@@ -73,7 +110,7 @@ Future<void> backgroundFunc(int alarmId, Map<String, dynamic> params) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
-
+  await AdminAlertDB.instance.database;
   await AndroidAlarmManager.initialize();
 
   // Request notification permission
@@ -96,10 +133,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(
-          create: (_) =>
-              ChatProvider(detectionService: SuicideDetectionService()),
-        ),
+
         ChangeNotifierProvider(
           create: (_) => AppDataProvider()..initializeSampleData(),
         ),
@@ -109,9 +143,6 @@ void main() async {
   );
 }
 
-// =====================================================
-// APP ROOT
-// =====================================================
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -128,15 +159,10 @@ class MyAppState extends State<MyApp> {
     Future.microtask(() => initBackgroundAlarm());
   }
 
-  // =====================================================
-  // ADMIN-ONLY BACKGROUND ALARM
-  // =====================================================
   Future<void> initBackgroundAlarm() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = await authProvider.getAuthData();
-    print("⚠user initbackground $user");
     if (user == null) {
-      print("⚠ No logged-in user. Alarm not started.");
       return;
     }
 
@@ -144,11 +170,8 @@ class MyAppState extends State<MyApp> {
     final roleId = int.parse(user["role_id"].toString());
 
     if (roleId != 1) {
-      print("⛔ Alarm not started. User is NOT admin.");
       return;
     }
-
-    print("🔥 Starting admin background alarm...");
 
     await AndroidAlarmManager.periodic(
       const Duration(seconds: 5),
@@ -159,8 +182,6 @@ class MyAppState extends State<MyApp> {
       wakeup: true,
       params: {"userId": userId, "role": roleId},
     );
-
-    print("✅ Admin alarm started every 5 seconds!");
   }
 
   @override

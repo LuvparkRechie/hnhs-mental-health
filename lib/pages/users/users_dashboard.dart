@@ -54,23 +54,26 @@ class _UserDashboardState extends State<UserDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section
-              _buildHeaderSection(),
-              SizedBox(height: 24),
-              // Daily Tip
-              _buildDailyTip(),
-              SizedBox(height: 24),
-              // Quick Access Grid (4 items)
-              _buildQuickAccessGrid(),
-            ],
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Section
+                _buildHeaderSection(),
+                SizedBox(height: 24),
+                // Daily Tip
+                _buildDailyTip(),
+                SizedBox(height: 24),
+                // Quick Access Grid (4 items)
+                _buildQuickAccessGrid(),
+              ],
+            ),
           ),
         ),
       ),

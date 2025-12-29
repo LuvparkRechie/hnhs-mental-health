@@ -41,24 +41,45 @@ class NotificationController {
   }
 
   @pragma('vm:entry-point')
-  static Future<void> onActionReceived(ReceivedAction action) async {
-    print("NOTIFICATION ACTION RECEIVED: ${action.payload}");
-  }
+  static Future<void> onActionReceived(ReceivedAction action) async {}
 }
 
 Future<dynamic> getAdminNotif(String userId) async {
   try {
     final api = ApiPhp(tableName: 'admin_alerts');
 
-    final response = await api.select();
-    // Make sure admin alert exists
-    if (response["data"].isNotEmpty) {
-      return response["data"]; // return first alert
-    }
+    // Compute today's date
+    final today = DateTime.now();
+    final todayStr =
+        "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-    return [];
+    final Map<String, dynamic> joinConfig = {
+      'join': 'LEFT JOIN users ON admin_alerts.user_id = users.id',
+      'columns': '''
+          admin_alerts.*,  
+          users.mobile_no,
+          users.username
+        ''',
+
+      // FIXED: Use AND (NOT comma)
+      // FIXED: Correct placeholders
+      'where':
+          'admin_alerts.is_settled = ? AND DATE(admin_alerts.created_date) = ?',
+
+      // FIXED: Must match EXACT number of ? placeholders
+      'where_params': ['N', todayStr],
+
+      'orderBy': 'admin_alerts.created_date DESC',
+    };
+
+    final response = await api.selectWithJoin(joinConfig);
+
+    if (response["data"] != null && response["data"].isNotEmpty) {
+      return response["data"];
+    } else {
+      return [];
+    }
   } catch (e) {
-    print("❌ Error fetching admin alert: $e");
-    return [];
+    return {'success': false, 'message': 'Error: $e'};
   }
 }

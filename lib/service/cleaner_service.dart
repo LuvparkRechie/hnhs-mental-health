@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../api_key/api_key.dart';
+import 'package:hnhsmind_care/api_key/api_key.dart';
 
 class AppointmentCleanerService {
   Timer? _timer;
@@ -24,13 +24,22 @@ class AppointmentCleanerService {
       final api = ApiPhp(
         tableName: 'appointments',
         whereClause: {
-          "custom":
-              "created_at < DATE_SUB(CONVERT_TZ(NOW(), @@global.time_zone, '+08:00'), INTERVAL 30 MINUTE) AND status NOT IN ('confirmed', 'rescheduled') LIMIT 500",
+          'custom':
+              "CONVERT_TZ(NOW(), @@session.time_zone, '+08:00') >= expires_at",
         },
       );
-      await api.delete();
+
+      final response = await api.delete();
+
+      if (response['status'] == 'success') {
+        print(
+          '[AppointmentCleaner] Expired appointments deleted successfully.',
+        );
+      } else {
+        print('[AppointmentCleaner] Delete failed: ${response['message']}');
+      }
     } catch (e) {
-      print("[AppointmentCleaner] Error: $e");
+      print('[AppointmentCleaner] Error: $e');
     }
   }
 }

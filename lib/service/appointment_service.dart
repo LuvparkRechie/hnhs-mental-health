@@ -325,7 +325,6 @@ class AppointmentService {
 
       final response = await api.selectWithJoin(joinConfig);
 
-      // Clean up expired appointments
       if (response['success'] == true && response['data'] is List) {
         final List<dynamic> appointments = response['data'];
         for (var appointment in appointments) {

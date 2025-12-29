@@ -137,11 +137,13 @@ class _AdminJournalScreenState extends State<AdminJournalScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(toolbarHeight: 0, elevation: 0),
-      body: SizedBox(
-        width: double.infinity,
-        child: _isLoading
-            ? _buildLoadingState()
-            : _buildQuotesList(filteredQuotes),
+      body: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: _isLoading
+              ? _buildLoadingState()
+              : _buildQuotesList(filteredQuotes),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _toggleCreateForm,

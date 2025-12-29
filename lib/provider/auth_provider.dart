@@ -1,8 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:hnhsmind_care/pages/login.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 import '../api_key/api_key.dart';
 
@@ -65,7 +66,7 @@ class AuthProvider with ChangeNotifier {
       );
 
       final res = jsonDecode(response.body);
-
+      print("res $res");
       if (res["success"]) {
         _user = User.fromJson(res["user"]);
         await _saveAuthData(_user!);

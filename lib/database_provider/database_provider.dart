@@ -1,6 +1,7 @@
 // lib/provider/app_data_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:hnhsmind_care/api_key/api_key.dart';
+import 'package:hnhsmind_care/service/appointment.dart';
 import 'package:provider/provider.dart';
 
 import '../provider/auth_provider.dart';
@@ -51,26 +52,6 @@ class MoodEntry {
   });
 }
 
-class Appointment {
-  final String id;
-  final String userName;
-  final DateTime schedule;
-  final DateTime bookingTime;
-  final String status;
-  final String type;
-  final String? notes;
-
-  Appointment({
-    required this.id,
-    required this.userName,
-    required this.schedule,
-    required this.bookingTime,
-    required this.status,
-    this.type = 'General',
-    this.notes,
-  });
-}
-
 class AppDataProvider with ChangeNotifier {
   // Only store high-risk chats for admin review
   final List<HighRiskChat> _highRiskChats = [];
@@ -108,9 +89,6 @@ class AppDataProvider with ChangeNotifier {
     _sessionStartTime = DateTime.now();
     _messageCount = 0;
 
-    if (kDebugMode) {
-      print('🆕 Chat session started: $_currentSessionId');
-    }
     notifyListeners();
   }
 
@@ -140,24 +118,13 @@ class AppDataProvider with ChangeNotifier {
 
     _highRiskChats.add(highRiskChat);
 
-    if (kDebugMode) {
-      print('🚨 High-risk chat stored for admin review');
-      print('   Risk Score: $riskScore');
-      print('   User: $userId');
-      print('   Requires Attention: $requiresImmediateAttention');
-    }
-
     notifyListeners();
   }
 
   // End chat session and prepare for mood reflection
   void endChatSession() {
     if (_currentSessionId != null && kDebugMode) {
-      final duration = DateTime.now().difference(_sessionStartTime!);
-      print('✅ Chat session ended: $_currentSessionId');
-      print(
-        '📊 Session stats: $_messageCount messages, ${duration.inMinutes} minutes',
-      );
+      DateTime.now().difference(_sessionStartTime!);
     }
 
     _currentSessionId = null;
@@ -184,9 +151,6 @@ class AppDataProvider with ChangeNotifier {
         resolvedBy: resolvedBy,
       );
 
-      if (kDebugMode) {
-        print('✅ High-risk chat resolved: $chatId by $resolvedBy');
-      }
       notifyListeners();
     }
   }
@@ -261,7 +225,7 @@ class AppDataProvider with ChangeNotifier {
         schedule: appointment.schedule,
         bookingTime: appointment.bookingTime,
         status: newStatus,
-        type: appointment.type,
+
         notes: appointment.notes,
       );
       notifyListeners();
@@ -336,7 +300,6 @@ class AppDataProvider with ChangeNotifier {
         schedule: DateTime.now().add(Duration(days: 2)),
         bookingTime: DateTime.now().subtract(Duration(days: 1)),
         status: 'Scheduled',
-        type: 'Therapy Session',
       ),
     ]);
 

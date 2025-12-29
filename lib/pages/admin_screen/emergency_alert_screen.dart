@@ -148,159 +148,161 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
         toolbarHeight: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Column(
-        children: [
-          // Emergency Header
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.dangerColor, Colors.red[800]!],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Emergency Header
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppTheme.dangerColor, Colors.red[800]!],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Iconsax.warning_2, color: Colors.white, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CRITICAL ALERTS',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Immediate attention required',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${alerts.length} alerts',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Iconsax.warning_2, color: Colors.white, size: 24),
-                SizedBox(width: 12),
-                Expanded(
+
+            // Loading State
+            if (isLoading) ...[
+              Expanded(
+                child: Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      CircularProgressIndicator(color: AppTheme.primaryRed),
+                      SizedBox(height: 16),
                       Text(
-                        'CRITICAL ALERTS',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Immediate attention required',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
+                        'Loading emergency alerts...',
+                        style: GoogleFonts.inter(color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${alerts.length} alerts',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Loading State
-          if (isLoading) ...[
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: AppTheme.primaryRed),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading emergency alerts...',
-                      style: GoogleFonts.inter(color: AppTheme.textSecondary),
-                    ),
-                  ],
-                ),
               ),
-            ),
-          ]
-          // Error State
-          else if (hasError) ...[
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Iconsax.warning_2,
-                      size: 64,
-                      color: AppTheme.dangerColor,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Failed to load alerts',
-                      style: GoogleFonts.poppins(
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
+            ]
+            // Error State
+            else if (hasError) ...[
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Iconsax.warning_2,
+                        size: 64,
+                        color: AppTheme.dangerColor,
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Please check your connection and try again',
-                      style: GoogleFonts.inter(color: AppTheme.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ]
-          // Empty State
-          else if (alerts.isEmpty) ...[
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Iconsax.tick_circle,
-                      size: 64,
-                      color: AppTheme.accentColor,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'No emergency alerts',
-                      style: GoogleFonts.poppins(
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
+                      SizedBox(height: 16),
+                      Text(
+                        'Failed to load alerts',
+                        style: GoogleFonts.poppins(
+                          color: AppTheme.textPrimary,
+                          fontSize: 18,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'All clear! No critical alerts at this time',
-                      style: GoogleFonts.inter(color: AppTheme.textSecondary),
-                    ),
-                  ],
+                      SizedBox(height: 8),
+                      Text(
+                        'Please check your connection and try again',
+                        style: GoogleFonts.inter(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ]
-          // Alerts List
-          else ...[
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _loadAlerts,
-                color: AppTheme.primaryRed,
-                child: ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: alerts.length,
-                  itemBuilder: (context, index) {
-                    return buildAlertCard(alerts[index]);
-                  },
+            ]
+            // Empty State
+            else if (alerts.isEmpty) ...[
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Iconsax.tick_circle,
+                        size: 64,
+                        color: AppTheme.accentColor,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No emergency alerts',
+                        style: GoogleFonts.poppins(
+                          color: AppTheme.textPrimary,
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'All clear! No critical alerts at this time',
+                        style: GoogleFonts.inter(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ]
+            // Alerts List
+            else ...[
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _loadAlerts,
+                  color: AppTheme.primaryRed,
+                  child: ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: alerts.length,
+                    itemBuilder: (context, index) {
+                      return buildAlertCard(alerts[index]);
+                    },
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
