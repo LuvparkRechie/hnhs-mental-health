@@ -217,6 +217,11 @@ class User {
   final String? address;
   final String? role;
   final String? roleId;
+  final String? section;
+  final String? gradeLevel;
+  final String? contactPerson;
+  final String? contactNumber;
+  final String? relation;
   final DateTime createdAt;
   final bool isActive;
 
@@ -229,25 +234,50 @@ class User {
     this.role,
     this.address,
     this.roleId,
+    this.section,
+    this.gradeLevel,
+    this.contactPerson,
+    this.contactNumber,
+    this.relation,
     required this.createdAt,
     this.isActive = true,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'].toString(),
-      username: json['username'] ?? '',
-      email: json['email'] ?? '',
-      mobileNo: json['mobile_no'],
-      dateOfBirth: json['birth_date'],
-      address: json['address'],
-      role: json['role_id'].toString() == "1" ? "Admin" : "",
-      roleId: json['role_id'].toString(),
-      createdAt: DateTime.parse(
-        json['created_at'] ?? DateTime.now().toIso8601String(),
-      ),
-      isActive: true,
-    );
+    print('=== DEBUG User.fromJson ===');
+    print('Raw JSON received: $json');
+
+    // Helper function to safely convert any type to string
+    String? _safeToString(dynamic value) {
+      if (value == null) return null;
+      return value.toString();
+    }
+
+    try {
+      return User(
+        id: _safeToString(json['id']) ?? '',
+        username: _safeToString(json['username']) ?? '',
+        email: _safeToString(json['email']) ?? '',
+        mobileNo: _safeToString(json['mobile_no']),
+        dateOfBirth: _safeToString(json['birth_date']),
+        address: _safeToString(json['address']),
+        role: (_safeToString(json['role_id']) ?? "2") == "1" ? "Admin" : "",
+        roleId: _safeToString(json['role_id']),
+        section: _safeToString(json['section']),
+        gradeLevel: _safeToString(json['grade_level']),
+        contactPerson: _safeToString(json['contact_person']),
+        contactNumber: _safeToString(json['contact_number']),
+        relation: _safeToString(json['relation']),
+        createdAt: DateTime.parse(
+          _safeToString(json['created_at']) ?? DateTime.now().toIso8601String(),
+        ),
+        isActive: true,
+      );
+    } catch (e, stackTrace) {
+      print('Error in User.fromJson: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -259,15 +289,65 @@ class User {
       'birth_date': dateOfBirth,
       'address': address,
       'role': role,
-      'role_id': roleId.toString(),
+      'role_id': roleId,
+      'section': section,
+      'grade_level': gradeLevel,
+      'contact_person': contactPerson,
+      'contact_number': contactNumber,
+      'relation': relation,
       'created_at': createdAt.toIso8601String(),
       'is_active': isActive,
     };
   }
 
   bool get isAdmin {
-    // Implement your admin logic here
-    // Example: check a role field or email pattern
-    return email.endsWith('@admin.com') || username == 'admin';
+    // Check if user is admin based on role_id
+    return roleId == "1" || email.endsWith('@admin.com') || username == 'admin';
+  }
+
+  // Helper method to check if user has student information
+  bool get hasStudentInfo {
+    return section != null ||
+        gradeLevel != null ||
+        contactPerson != null ||
+        contactNumber != null ||
+        relation != null;
+  }
+
+  // Get formatted contact information
+  String? get formattedContactInfo {
+    if (contactPerson == null && contactNumber == null && relation == null) {
+      return null;
+    }
+
+    final parts = <String>[];
+    if (contactPerson != null && contactPerson!.isNotEmpty) {
+      parts.add(contactPerson!);
+    }
+    if (relation != null && relation!.isNotEmpty) {
+      parts.add('($relation)');
+    }
+    if (contactNumber != null && contactNumber!.isNotEmpty) {
+      parts.add('- $contactNumber');
+    }
+
+    return parts.join(' ');
+  }
+
+  // Get formatted grade info
+  String? get formattedGradeInfo {
+    if (gradeLevel == null && section == null) {
+      return null;
+    }
+
+    final parts = <String>[];
+    if (gradeLevel != null && gradeLevel!.isNotEmpty) {
+      parts.add('Grade $gradeLevel');
+    }
+    if (section != null && section!.isNotEmpty) {
+      parts.add('Section $section');
+    }
+
+    return parts.join(', ');
   }
 }

@@ -73,7 +73,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty || _isLoading) return;
-
     // Add user message
     setState(() {
       _messages.add({

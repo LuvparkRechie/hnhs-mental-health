@@ -59,7 +59,7 @@ class ApiPhp {
       bool isSuccess =
           response.statusCode == 200 &&
           (data["status"] == "success" || data["success"] == true);
-
+      print("datataaaa $data");
       return {
         "success": isSuccess,
         "statusCode": response.statusCode,
@@ -310,6 +310,13 @@ class ApiPhp {
     if (limit != null) {
       mergedJoinConfig['limit'] = limit;
     }
+    print(
+      json.encode({
+        'table': tableName,
+        'operation': 'select_with_join',
+        'join_config': mergedJoinConfig,
+      }),
+    );
 
     return await _handleRequest(
       http.post(

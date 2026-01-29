@@ -34,7 +34,7 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
     });
 
     try {
-      final response = await getAllAlertsToday();
+      final response = await selectAdminAlertsWithUser();
 
       if (mounted) {
         if (response['success'] == true && response['data'] is List) {
@@ -60,40 +60,37 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
     }
   }
 
-  Future<Map<String, dynamic>> getAllAlertsToday() async {
-    try {
-      final api = ApiPhp(tableName: 'admin_alerts');
+  Future<Map<String, dynamic>> selectAdminAlertsWithUser() async {
+    final Map<String, dynamic> joinConfig = {
+      'join': 'LEFT JOIN users ON admin_alerts.user_id = users.id',
+      'columns': '''
+    admin_alerts.*,
+    users.mobile_no,
+    users.username,
+    users.contact_person AS user_contact_person,
+    users.contact_number AS user_contact_number,
+     users.relation
+  ''',
+      'where': 'admin_alerts.is_settled = ?',
+      'where_params': ['N'], // You can add a date filter if needed
+      'orderBy': 'admin_alerts.created_date DESC',
+      // 'limit': 10, // optional
+    };
 
-      final Map<String, dynamic> joinConfig = {
-        'join': 'LEFT JOIN users ON admin_alerts.user_id = users.id',
-        'columns': '''
-          admin_alerts.*,  
-          users.mobile_no,
-          users.username
-        ''',
-        'where': 'admin_alerts.is_settled = ?',
-        'where_params': ['N'],
-        'orderBy': 'admin_alerts.created_date DESC',
-      };
+    final api = ApiPhp(tableName: 'admin_alerts');
 
-      final response = await api.selectWithJoin(joinConfig);
-      return response;
-    } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
-    }
+    final response = await api.selectWithJoin(joinConfig);
+    return response;
   }
 
   Future<void> launchSMS(String phoneNumber, String message) async {
-    final Uri smsUri = Uri(
-      scheme: 'sms',
-      path: phoneNumber,
-      queryParameters: <String, String>{'body': message},
+    final Uri smsUri = Uri.parse(
+      'sms:${"0$phoneNumber"}?body=${Uri.encodeComponent(message)}',
     );
 
     if (await canLaunchUrl(smsUri)) {
       await launchUrl(smsUri);
     } else {
-      // Handle error, for example, show a dialog or snackbar
       throw 'Could not launch SMS';
     }
   }
@@ -313,6 +310,10 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
     final mobileNo = alert['mobile_no'] ?? 'No contact';
     final createdDate = alert['created_date'] ?? DateTime.now().toString();
     final itemIdx = alert["id"];
+    // Get contact person information
+    final contactPerson = alert['user_contact_person'].toString();
+    final contactNumber = alert['user_contact_number'].toString();
+    final relation = alert['relation'].toString();
 
     return Container(
       margin: EdgeInsets.only(bottom: 12),
@@ -387,6 +388,83 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
                 ),
               ],
             ),
+
+            // Contact Person Information (if available)
+            if (contactPerson.isNotEmpty || contactNumber.isNotEmpty) ...[
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Iconsax.profile_2user, size: 16, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Emergency Contact:',
+                            style: GoogleFonts.inter(
+                              color: Colors.blue,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          if (contactPerson.isNotEmpty)
+                            Text(
+                              'Contact Person: $contactPerson',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textPrimary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          if (relation.isNotEmpty && contactPerson.isNotEmpty)
+                            Text(
+                              'Relationship: $relation',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          if (contactNumber.isNotEmpty)
+                            Row(
+                              children: [
+                                Text(
+                                  'Contact Number: ',
+                                  style: GoogleFonts.inter(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => launchSMS(contactNumber, "Helo"),
+                                  child: Text(
+                                    contactNumber,
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.primaryRed,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             SizedBox(height: 12),
 
@@ -476,22 +554,25 @@ class _EmergencyAlertsScreenState extends State<EmergencyAlertsScreen> {
                     ),
                   ),
                 ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => launchSMS(mobileNo, ""),
-                    icon: Icon(Iconsax.message, size: 16),
-                    label: AutoSizeText(
-                      'Send SMS',
-                      maxLines: 1,
-                      style: TextStyle(),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryRed,
-                      foregroundColor: Colors.white,
+
+                if (contactNumber.isNotEmpty && contactNumber != mobileNo) ...[
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => launchSMS(contactNumber, ""),
+                      icon: Icon(Iconsax.call, size: 16),
+                      label: AutoSizeText(
+                        'Contact Person',
+                        maxLines: 1,
+                        style: TextStyle(),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

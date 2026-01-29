@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hnhsmind_care/pages/chat_screen.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_theme.dart';
@@ -95,6 +94,12 @@ class _UserDashboardState extends State<UserDashboard> {
       "address": user.address,
       "role": user.role,
       "role_id": user.roleId,
+      // Add the new fields
+      "section": user.section,
+      "grade_level": user.gradeLevel,
+      "contact_person": user.contactPerson,
+      "contact_number": user.contactNumber,
+      "relation": user.relation,
     };
 
     return Container(
@@ -192,10 +197,11 @@ class _UserDashboardState extends State<UserDashboard> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "Member since ${DateFormat('MMM yyyy').format(user.createdAt)}",
+                      "${user.section} » ${user.gradeLevel}",
                       style: TextStyle(
-                        color: AppTheme.textSecondary.withOpacity(0.7),
-                        fontSize: 11,
+                        color: Colors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hnhsmind_care/app_theme.dart';
 import 'package:lottie/lottie.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-
-import '../provider/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,29 +26,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNext() async {
-    // Correct way to access provider in initState
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    // Initialize auth provider
-    await authProvider.initialize();
-
-    // Use the same instance that was initialized
-    final userData = await authProvider.getAuthData();
-
-    // authProvider.clearAuthData();
-
     await Future.delayed(Duration(seconds: 3));
     if (mounted) {
-      if (userData == null) {
-        Navigator.pushReplacementNamed(context, '/onboarding');
-        return;
-      }
-
-      if (userData["role_id"].toString() == "2") {
-        Navigator.pushReplacementNamed(context, '/users');
-      } else {
-        Navigator.pushReplacementNamed(context, '/admin');
-      }
+      Navigator.pushReplacementNamed(context, '/onboarding');
     }
   }
 
